@@ -69,5 +69,4 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)
-    implementation(libs.ktor.client.darwin)
 }
