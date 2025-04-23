@@ -10,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
 import androidx.camera.compose.CameraXViewfinder
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
 import androidx.camera.core.CameraSelector.DEFAULT_FRONT_CAMERA
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
@@ -19,15 +20,19 @@ import androidx.camera.core.SurfaceRequest
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -75,7 +80,7 @@ class CameraPreviewViewModel : ViewModel() {
     suspend fun bindToCamera(appContext: Context, lifecycleOwner: LifecycleOwner) {
         val processCameraProvider = ProcessCameraProvider.awaitInstance(appContext)
         processCameraProvider.bindToLifecycle(
-            lifecycleOwner, DEFAULT_FRONT_CAMERA, cameraPreviewUseCase
+            lifecycleOwner, DEFAULT_BACK_CAMERA, cameraPreviewUseCase
         )
 
         // Cancellation signals we're done with the camera
@@ -117,44 +122,54 @@ fun CameraPreviewScreen(viewModel: CameraPreviewViewModel, modifier: Modifier = 
 
 
 class MainActivity : ComponentActivity() {
-    private fun startCamera() {
-        val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
-        cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
-            val _surfaceRequest = MutableStateFlow<SurfaceRequest?>(null)
-            val surfaceRequest: StateFlow<SurfaceRequest?> = _surfaceRequest
-            val cameraPreviewUseCase = Preview.Builder().build().apply {
-                setSurfaceProvider { newSurfaceRequest ->
-                    _surfaceRequest.update { newSurfaceRequest }
-                }
-            }
-            val imageAnalysis = ImageAnalysis.Builder()
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
-                .also { it.setAnalyzer(ContextCompat.getMainExecutor(this), BarcodeAnalyzer()) }
-
-            cameraProvider.unbindAll()
-            cameraProvider.bindToLifecycle(
-                this, CameraSelector.DEFAULT_BACK_CAMERA, cameraPreviewUseCase, imageAnalysis
-            )
-        }, ContextCompat.getMainExecutor(this))
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val borderWidth = 6;
+            val borderWidth = 0;
             MyApplicationTheme {
                 val viewModel = remember { CameraPreviewViewModel() }
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Column(modifier = Modifier.fillMaxSize().padding(innerPadding).border(borderWidth.dp, Color.Black, RectangleShape)) {
-                        Row(modifier = Modifier.fillMaxSize().padding(borderWidth.dp)) {
+                        Box(modifier = Modifier.padding(borderWidth.dp).weight(1f)) {
                             CameraPreviewScreen(viewModel, Modifier)
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center, ) {
+                                val cornerSpacing = 20.dp
+                                val cornerSize = 60.dp
+                                Box(Modifier.size(350.dp, 350.dp).border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.TopStart) {
+                                    Box(
+                                        Modifier.padding(cornerSpacing).size(cornerSize, cornerSize).border(
+                                            5.dp,
+                                            Color.White,
+                                            RoundedCornerShape(20.dp)
+                                        )
+                                    )
+                                }
+                                Box(Modifier.size(350.dp, 350.dp).border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.TopEnd) {
+                                    Box(
+                                        Modifier.padding(cornerSpacing).size(cornerSize, cornerSize).border(
+                                            5.dp,
+                                            Color.White,
+                                            RoundedCornerShape(20.dp)
+                                        )
+                                    )
+                                }
+                                Box(Modifier.size(350.dp, 350.dp).border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.BottomStart) {
+                                    Box(
+                                        Modifier.padding(cornerSpacing).size(cornerSize, cornerSize).border(
+                                            5.dp,
+                                            Color.White,
+                                            RoundedCornerShape(20.dp)
+                                        )
+                                    )
+                                }
+                            }
                         }
+
                     }
 
                 }
+
             }
 
         }
