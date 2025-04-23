@@ -126,7 +126,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val borderWidth = 0;
+            val borderWidth = 0
             MyApplicationTheme {
                 val viewModel = remember { CameraPreviewViewModel() }
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
