@@ -243,18 +243,21 @@ fun CameraPreviewContent(
         )
     }
 }
-fun sendDataToGoogleScript(name: String?, email: String?) {
+fun sendDataToGoogleScript(decodedText : String, inOut : String, agent : String, manager : String, otherEquip :String) {
     Thread {
         try {
-            val url = URL("https://script.google.com/a/macros/rqdirect.com/s/AKfycbxTACpWBbb-3bu8Tnh_g9hJXCTFNvmGKsMI8GZ3Euqq/dev")
+            val url = URL("https://script.google.com/macros/s/AKfycbwqgdk-VYOEPgRzIJP10spuHpu-u0aqz-QC--jRbjx-EM_T3keBCMIM6xuAEJaaUkLN/exec")
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
             conn.setRequestProperty("Content-Type", "application/json")
             conn.doOutput = true
 
             val json = JSONObject()
-            json.put("name", name)
-            json.put("email", email)
+            json.put("decodedText", decodedText)
+            json.put("inOut", inOut)
+            json.put("agent", agent)
+            json.put("manager", manager)
+            json.put("otherEquip", otherEquip)
 
             val os = conn.outputStream
             os.write(json.toString().toByteArray(charset("UTF-8")))
