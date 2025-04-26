@@ -4,14 +4,13 @@ package com.example.myapplication
 
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.annotation.OptIn
 import androidx.camera.compose.CameraXViewfinder
-import androidx.camera.core.CameraSelector
 import androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
-import androidx.camera.core.CameraSelector.DEFAULT_FRONT_CAMERA
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -19,12 +18,9 @@ import androidx.camera.core.Preview
 import androidx.camera.core.SurfaceRequest
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.lifecycle.awaitInstance
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -39,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -46,7 +43,6 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -58,12 +54,13 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
-import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
-import androidx.compose.runtime.remember
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 
 
 class CameraPreviewViewModel : ViewModel() {
@@ -95,7 +92,10 @@ fun CameraPreviewScreen(viewModel: CameraPreviewViewModel, modifier: Modifier = 
         CameraPreviewContent(viewModel, modifier)
     } else {
         Column(
-            modifier = modifier.fillMaxSize().wrapContentSize().widthIn(max = 480.dp),
+            modifier = modifier
+                .fillMaxSize()
+                .wrapContentSize()
+                .widthIn(max = 480.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             val textToShow = if (cameraPermissionState.status.shouldShowRationale) {
@@ -130,37 +130,57 @@ class MainActivity : ComponentActivity() {
             MyApplicationTheme {
                 val viewModel = remember { CameraPreviewViewModel() }
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column(modifier = Modifier.fillMaxSize().padding(innerPadding).border(borderWidth.dp, Color.Black, RectangleShape)) {
-                        Box(modifier = Modifier.padding(borderWidth.dp).weight(1f)) {
+                    Column(modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .border(borderWidth.dp, Color.Black, RectangleShape)) {
+                        Box(modifier = Modifier
+                            .padding(borderWidth.dp)
+                            .weight(1f)) {
                             CameraPreviewScreen(viewModel, Modifier)
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center, ) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 val cornerSpacing = 20.dp
                                 val cornerSize = 60.dp
-                                Box(Modifier.size(350.dp, 350.dp).border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.TopStart) {
+                                Box(Modifier
+                                    .size(350.dp, 350.dp)
+                                    .border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.TopStart) {
                                     Box(
-                                        Modifier.padding(cornerSpacing).size(cornerSize, cornerSize).border(
-                                            5.dp,
-                                            Color.White,
-                                            RoundedCornerShape(20.dp)
-                                        )
+                                        Modifier
+                                            .padding(cornerSpacing)
+                                            .size(cornerSize, cornerSize)
+                                            .border(
+                                                5.dp,
+                                                Color.White,
+                                                RoundedCornerShape(20.dp)
+                                            )
                                     )
                                 }
-                                Box(Modifier.size(350.dp, 350.dp).border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.TopEnd) {
+                                Box(Modifier
+                                    .size(350.dp, 350.dp)
+                                    .border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.TopEnd) {
                                     Box(
-                                        Modifier.padding(cornerSpacing).size(cornerSize, cornerSize).border(
-                                            5.dp,
-                                            Color.White,
-                                            RoundedCornerShape(20.dp)
-                                        )
+                                        Modifier
+                                            .padding(cornerSpacing)
+                                            .size(cornerSize, cornerSize)
+                                            .border(
+                                                5.dp,
+                                                Color.White,
+                                                RoundedCornerShape(20.dp)
+                                            )
                                     )
                                 }
-                                Box(Modifier.size(350.dp, 350.dp).border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.BottomStart) {
+                                Box(Modifier
+                                    .size(350.dp, 350.dp)
+                                    .border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.BottomStart) {
                                     Box(
-                                        Modifier.padding(cornerSpacing).size(cornerSize, cornerSize).border(
-                                            5.dp,
-                                            Color.White,
-                                            RoundedCornerShape(20.dp)
-                                        )
+                                        Modifier
+                                            .padding(cornerSpacing)
+                                            .size(cornerSize, cornerSize)
+                                            .border(
+                                                5.dp,
+                                                Color.White,
+                                                RoundedCornerShape(20.dp)
+                                            )
                                     )
                                 }
                             }
@@ -222,4 +242,28 @@ fun CameraPreviewContent(
             modifier = modifier
         )
     }
+}
+fun sendDataToGoogleScript(name: String?, email: String?) {
+    Thread {
+        try {
+            val url = URL("https://script.google.com/a/macros/rqdirect.com/s/AKfycbxTACpWBbb-3bu8Tnh_g9hJXCTFNvmGKsMI8GZ3Euqq/dev")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.doOutput = true
+
+            val json = JSONObject()
+            json.put("name", name)
+            json.put("email", email)
+
+            val os = conn.outputStream
+            os.write(json.toString().toByteArray(charset("UTF-8")))
+            os.close()
+
+            val responseCode = conn.responseCode
+            Log.d("HTTP", "Response Code: $responseCode")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }.start()
 }
