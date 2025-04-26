@@ -1,272 +1,205 @@
 @file:kotlin.OptIn(ExperimentalPermissionsApi::class)
+// MainActivity.kt
 
 package com.example.myapplication
 
-import android.content.Context
+import androidx.compose.ui.viewinterop.AndroidView
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.annotation.OptIn
-import androidx.camera.compose.CameraXViewfinder
-import androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
-import androidx.camera.core.Preview
-import androidx.camera.core.SurfaceRequest
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.lifecycle.awaitInstance
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
+import androidx.camera.view.PreviewView
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.myapplication.ui.theme.MyApplicationTheme
+import androidx.lifecycle.lifecycleScope
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.permissions.shouldShowRationale
+import com.google.accompanist.permissions.isGranted
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
-import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
-
-
-class CameraPreviewViewModel : ViewModel() {
-    // Used to set up a link between the Camera and your UI.
-    private val _surfaceRequest = MutableStateFlow<SurfaceRequest?>(null)
-    val surfaceRequest: StateFlow<SurfaceRequest?> = _surfaceRequest
-
-    private val cameraPreviewUseCase = Preview.Builder().build().apply {
-        setSurfaceProvider { newSurfaceRequest ->
-            _surfaceRequest.update { newSurfaceRequest }
-        }
-    }
-
-    suspend fun bindToCamera(appContext: Context, lifecycleOwner: LifecycleOwner) {
-        val processCameraProvider = ProcessCameraProvider.awaitInstance(appContext)
-        processCameraProvider.bindToLifecycle(
-            lifecycleOwner, DEFAULT_BACK_CAMERA, cameraPreviewUseCase
-        )
-
-        // Cancellation signals we're done with the camera
-        try { awaitCancellation() } finally { processCameraProvider.unbindAll() }
-    }
-}
-
-@Composable
-fun CameraPreviewScreen(viewModel: CameraPreviewViewModel, modifier: Modifier = Modifier) {
-    val cameraPermissionState = rememberPermissionState(android.Manifest.permission.CAMERA)
-    if (cameraPermissionState.status.isGranted) {
-        CameraPreviewContent(viewModel, modifier)
-    } else {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .wrapContentSize()
-                .widthIn(max = 480.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            val textToShow = if (cameraPermissionState.status.shouldShowRationale) {
-                // If the user has denied the permission but the rationale can be shown,
-                // then gently explain why the app requires this permission
-                "Whoops! Looks like we need your camera to work our magic!" +
-                        "Don't worry, we just wanna see your pretty face (and maybe some cats).  " +
-                        "Grant us permission and let's get this party started!"
-            } else {
-                // If it's the first time the user lands on this feature, or the user
-                // doesn't want to be asked again for this permission, explain that the
-                // permission is required
-                "Hi there! We need your camera to work our magic! ✨\n" +
-                        "Grant us permission and let's get this party started! \uD83C\uDF89"
-            }
-            Text(textToShow, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = { cameraPermissionState.launchPermissionRequest() }) {
-                Text("Unleash the Camera!")
-            }
-        }
-    }
-}
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            val borderWidth = 0
-            MyApplicationTheme {
-                val viewModel = remember { CameraPreviewViewModel() }
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column(modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding)
-                        .border(borderWidth.dp, Color.Black, RectangleShape)) {
-                        Box(modifier = Modifier
-                            .padding(borderWidth.dp)
-                            .weight(1f)) {
-                            CameraPreviewScreen(viewModel, Modifier)
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                val cornerSpacing = 20.dp
-                                val cornerSize = 60.dp
-                                Box(Modifier
-                                    .size(350.dp, 350.dp)
-                                    .border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.TopStart) {
-                                    Box(
-                                        Modifier
-                                            .padding(cornerSpacing)
-                                            .size(cornerSize, cornerSize)
-                                            .border(
-                                                5.dp,
-                                                Color.White,
-                                                RoundedCornerShape(20.dp)
-                                            )
-                                    )
-                                }
-                                Box(Modifier
-                                    .size(350.dp, 350.dp)
-                                    .border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.TopEnd) {
-                                    Box(
-                                        Modifier
-                                            .padding(cornerSpacing)
-                                            .size(cornerSize, cornerSize)
-                                            .border(
-                                                5.dp,
-                                                Color.White,
-                                                RoundedCornerShape(20.dp)
-                                            )
-                                    )
-                                }
-                                Box(Modifier
-                                    .size(350.dp, 350.dp)
-                                    .border(5.dp, Color.White, RoundedCornerShape(20.dp)), contentAlignment = Alignment.BottomStart) {
-                                    Box(
-                                        Modifier
-                                            .padding(cornerSpacing)
-                                            .size(cornerSize, cornerSize)
-                                            .border(
-                                                5.dp,
-                                                Color.White,
-                                                RoundedCornerShape(20.dp)
-                                            )
-                                    )
-                                }
-                            }
-                        }
-
+            MaterialTheme {
+                QRScannerScreen(onSubmit = { decoded, inOut, agent, manager, other ->
+                    // fire off POST
+                    lifecycleScope.launch(Dispatchers.IO) {
+                        sendDataToGoogleScript(decoded, inOut, agent, manager, other)
                     }
-
-                }
-
+                })
             }
-
         }
-
     }
-
 }
+
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+fun QRScannerScreen(onSubmit: (String, String, String, String, String) -> Unit) {
+    // permissions
+    val camPerm = rememberPermissionState(android.Manifest.permission.CAMERA)
 
-class BarcodeAnalyzer : ImageAnalysis.Analyzer {
+    // scanner state
+    var lastDecoded by remember { mutableStateOf("") }
+    var errorMsg by remember { mutableStateOf<String?>(null) }
+    var showForm by remember { mutableStateOf(false) }
+
+    // form fields
+    var inOut by remember { mutableStateOf("") }
+    var agent by remember { mutableStateOf("") }
+    var manager by remember { mutableStateOf("") }
+    var other by remember { mutableStateOf("") }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+
+    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+            if (!camPerm.status.isGranted) {
+                if (camPerm.status.shouldShowRationale) {
+                    Text("Camera needed to scan QR codes")
+                }
+                Button({ camPerm.launchPermissionRequest() }) {
+                    Text("Grant camera")
+                }
+                return@Column
+            }
+            // PreviewView for CameraX
+            AndroidView(factory = { ctx ->
+                PreviewView(ctx).apply {
+                    val provider = ProcessCameraProvider.getInstance(ctx).get()
+                    val preview = androidx.camera.core.Preview.Builder().build()
+                    preview.surfaceProvider = surfaceProvider
+
+                    val analyzer = ImageAnalysis.Builder().build().also {
+                        it.setAnalyzer(ctx.mainExecutor, QRAnalyzer(onResult = { raw ->
+                            // binary → text
+                            if (isValidBinary(raw)) {
+                                lastDecoded = binaryToText(raw)
+                                showForm = true
+                                errorMsg = null
+                            } else {
+                                errorMsg = "Invalid binary code"
+                            }
+                        }))
+                    }
+                    provider.bindToLifecycle(
+                        lifecycleOwner,
+                        androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA,
+                        preview, analyzer
+                    )
+                }
+            }, modifier = Modifier.weight(1f))
+
+            Spacer(Modifier.height(8.dp))
+            errorMsg?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+
+            if (showForm) {
+                OutlinedTextField(
+                    value = inOut, onValueChange = { inOut = it },
+                    label = { Text("In or Out") }, modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = agent, onValueChange = { agent = it },
+                    label = { Text("Agent Name") }, modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = manager, onValueChange = { manager = it },
+                    label = { Text("Manager Name") }, modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = other, onValueChange = { other = it },
+                    label = { Text("Other Equipment") }, modifier = Modifier.fillMaxWidth()
+                )
+                Button(onClick = {
+                    onSubmit(
+                        lastDecoded, inOut.ifBlank { "N/A" },
+                        agent.ifBlank { "N/A" },
+                        manager.ifBlank { "N/A" },
+                        other.ifBlank { "N/A" })
+                    showForm = false
+                }, modifier = Modifier.padding(top = 16.dp)) {
+                    Text("Submit Scan")
+                }
+            }
+        }
+    }
+}
+// analyzer that reads barcodes and calls back the raw bits string
+class QRAnalyzer(
+    private val onResult: (String) -> Unit
+) : ImageAnalysis.Analyzer {
     private val scanner = BarcodeScanning.getClient()
 
-    @OptIn(ExperimentalGetImage::class)
+
     override fun analyze(image: ImageProxy) {
-        val mediaImage = image.image
-        if (mediaImage != null) {
-            val inputImage = InputImage.fromMediaImage(mediaImage, image.imageInfo.rotationDegrees)
-            scanner.process(inputImage)
+        image.image?.let { mediaImage ->
+            val input = InputImage.fromMediaImage(mediaImage, image.imageInfo.rotationDegrees)
+            scanner.process(input)
                 .addOnSuccessListener { barcodes ->
-                    barcodes.firstOrNull()?.rawValue?.let { scanResult ->
-                        // Handle result (e.g., debounce and save to DB)
-                    }
+                    barcodes.firstOrNull()?.rawValue?.let { onResult(it) }
                 }
                 .addOnCompleteListener { image.close() }
-        }
+        } ?: image.close()
     }
 }
-@Composable
-fun CameraPreviewContent(
-    viewModel: CameraPreviewViewModel,
-    modifier: Modifier = Modifier,
-    lifecycleOwner: LifecycleOwner = LocalLifecycleOwner.current
+
+// simple binary validators in Kotlin:
+fun isValidBinary(s: String): Boolean {
+    val clean = s.replace("\\s+".toRegex(), "")
+    return clean.matches(Regex("[01]+")) && clean.length % 8 == 0
+}
+fun binaryToText(s: String): String {
+    return s.trim().chunked(8)
+        .map { it.toInt(2).toChar() }
+        .joinToString("")
+}
+
+// networking: POST your JSON to the Script URL
+fun sendDataToGoogleScript(
+    decodedText: String,
+    inOut:       String,
+    agent:       String,
+    manager:     String,
+    other:       String
 ) {
-    val surfaceRequest by viewModel.surfaceRequest.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    LaunchedEffect(lifecycleOwner) {
-        viewModel.bindToCamera(context.applicationContext, lifecycleOwner)
-    }
+    try {
+        var infoLog = JSONObject().apply {
+            put("decodedText", decodedText)
+            put("inOut", inOut)
+            put("agent" , agent)
+            put("manager", manager)
+            put("otherEquip", other)
+        }.toString()
 
-    surfaceRequest?.let { request ->
-        CameraXViewfinder(
-            surfaceRequest = request,
-            modifier = modifier
-        )
-    }
-}
-fun sendDataToGoogleScript(decodedText : String, inOut : String, agent : String, manager : String, otherEquip :String) {
-    Thread {
-        try {
-            val url = URL("https://script.google.com/macros/s/AKfycbwqgdk-VYOEPgRzIJP10spuHpu-u0aqz-QC--jRbjx-EM_T3keBCMIM6xuAEJaaUkLN/exec")
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.doOutput = true
-
-            val json = JSONObject()
-            json.put("decodedText", decodedText)
-            json.put("inOut", inOut)
-            json.put("agent", agent)
-            json.put("manager", manager)
-            json.put("otherEquip", otherEquip)
-
-            val os = conn.outputStream
-            os.write(json.toString().toByteArray(charset("UTF-8")))
-            os.close()
-
-            val responseCode = conn.responseCode
-            Log.d("HTTP", "Response Code: $responseCode")
-        } catch (e: Exception) {
-            e.printStackTrace()
+        Log.d("info dumped : ", infoLog)
+        val url = URL("https://script.google.com/macros/s/AKfycbw2H-2hTNHzaPhLtxSbM7azhPFOZkE2tw1POKbXWvNpOBFiqFPBgXbQN9NHI97esFQ4/exec")
+        with(url.openConnection() as HttpURLConnection) {
+            requestMethod = "POST"
+            setRequestProperty("Content-Type","application/json")
+            doOutput = true
+            outputStream.use { it.write(
+                infoLog.toByteArray()
+            ) }
+            Log.d("POST","resp=${responseCode}")
         }
-    }.start()
+    } catch (e: Exception) {
+        Log.e("POST","failed", e)
+    }
 }
