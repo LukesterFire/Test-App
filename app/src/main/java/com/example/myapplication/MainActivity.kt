@@ -1,24 +1,29 @@
-@file:kotlin.OptIn(ExperimentalPermissionsApi::class)
+@file:OptIn(ExperimentalPermissionsApi::class)
 // MainActivity.kt
 
 package com.example.myapplication
 
+import android.os.Build
 import androidx.compose.ui.viewinterop.AndroidView
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -34,6 +39,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.P)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -51,6 +57,7 @@ class MainActivity : ComponentActivity() {
 }
 
 
+@RequiresApi(Build.VERSION_CODES.P)
 @Composable
 fun QRScannerScreen(onSubmit: (String, String, String, String, String) -> Unit) {
     // permissions
@@ -81,31 +88,99 @@ fun QRScannerScreen(onSubmit: (String, String, String, String, String) -> Unit) 
                 return@Column
             }
             // PreviewView for CameraX
-            AndroidView(factory = { ctx ->
-                PreviewView(ctx).apply {
-                    val provider = ProcessCameraProvider.getInstance(ctx).get()
-                    val preview = androidx.camera.core.Preview.Builder().build()
-                    preview.surfaceProvider = surfaceProvider
+            Box(modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+            ) {
+                // Camera Preview
+                AndroidView(factory = { ctx ->
+                    PreviewView(ctx).apply {
+                        val provider = ProcessCameraProvider.getInstance(ctx).get()
+                        val preview = androidx.camera.core.Preview.Builder().build()
+                        preview.surfaceProvider = surfaceProvider
 
-                    val analyzer = ImageAnalysis.Builder().build().also {
-                        it.setAnalyzer(ctx.mainExecutor, QRAnalyzer(onResult = { raw ->
-                            // binary → text
-                            if (isValidBinary(raw)) {
-                                lastDecoded = binaryToText(raw)
-                                showForm = true
-                                errorMsg = null
-                            } else {
-                                errorMsg = "Invalid binary code"
-                            }
-                        }))
+                        val analyzer = ImageAnalysis.Builder().build().also {
+                            it.setAnalyzer(ctx.mainExecutor, QRAnalyzer(onResult = { raw ->
+                                if (isValidBinary(raw)) {
+                                    lastDecoded = binaryToText(raw)
+                                    showForm = true
+                                    errorMsg = null
+                                } else {
+                                    errorMsg = "Invalid binary code"
+                                }
+                            }))
+                        }
+                        provider.bindToLifecycle(
+                            lifecycleOwner,
+                            androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA,
+                            preview, analyzer
+                        )
                     }
-                    provider.bindToLifecycle(
-                        lifecycleOwner,
-                        androidx.camera.core.CameraSelector.DEFAULT_BACK_CAMERA,
-                        preview, analyzer
+                }, modifier = Modifier.fillMaxSize())
+
+                // QR Framing Box overlay
+                Box(
+                    Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val cornerSpacing = 20.dp
+                    val cornerSize = 60.dp
+                    val frameSize = 350.dp
+                    val borderWidth = 5.dp
+                    val cornerShape = RoundedCornerShape(20.dp)
+
+                    // Center Frame
+                    Box(
+                        Modifier
+                            .size(frameSize)
+                            .border(borderWidth, Color.White, cornerShape)
                     )
+
+                    // Top Start Corner
+                    Box(
+                        Modifier
+                            .size(frameSize)
+                            .border(borderWidth, Color.Transparent, cornerShape),
+                        contentAlignment = Alignment.TopStart
+                    ) {
+                        Box(
+                            Modifier
+                                .padding(cornerSpacing)
+                                .size(cornerSize)
+                                .border(borderWidth, Color.White, cornerShape)
+                        )
+                    }
+                    // Top End Corner
+                    Box(
+                        Modifier
+                            .size(frameSize)
+                            .border(borderWidth, Color.Transparent, cornerShape),
+                        contentAlignment = Alignment.TopEnd
+                    ) {
+                        Box(
+                            Modifier
+                                .padding(cornerSpacing)
+                                .size(cornerSize)
+                                .border(borderWidth, Color.White, cornerShape)
+                        )
+                    }
+                    // Bottom Start Corner
+                    Box(
+                        Modifier
+                            .size(frameSize)
+                            .border(borderWidth, Color.Transparent, cornerShape),
+                        contentAlignment = Alignment.BottomStart
+                    ) {
+                        Box(
+                            Modifier
+                                .padding(cornerSpacing)
+                                .size(cornerSize)
+                                .border(borderWidth, Color.White, cornerShape)
+                        )
+                    }
                 }
-            }, modifier = Modifier.weight(1f))
+            }
 
             Spacer(Modifier.height(8.dp))
             errorMsg?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -148,6 +223,7 @@ class QRAnalyzer(
     private val scanner = BarcodeScanning.getClient()
 
 
+    @androidx.annotation.OptIn(ExperimentalGetImage::class)
     override fun analyze(image: ImageProxy) {
         image.image?.let { mediaImage ->
             val input = InputImage.fromMediaImage(mediaImage, image.imageInfo.rotationDegrees)
